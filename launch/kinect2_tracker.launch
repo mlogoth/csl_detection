@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+	<!--Set init = True -> Algorithm Initialization  -->
+	<rosparam file="$(find csl_detection)/config/AdaptiveOMPLTracker.yaml" command="load" />
+	
+	<node name="kinect2_tracking_node" pkg="csl_detection" type="kinect2_csl_tracker" output="screen" />
+	
+</launch>
+
+
