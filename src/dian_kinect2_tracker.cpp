@@ -34,6 +34,11 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *
  */
+
+#include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/Quaternion.h"
+
+
 #include "pcl_ros/point_cloud.h"
 //#include <youbot_teleop_joystick_manipulation/d3poseJS.h>
 #include <ros/ros.h>
@@ -87,6 +92,11 @@
 
 #include <boost/format.hpp>
 
+#include <cstdio>
+#include <cmath>
+
+#define sign(x) (( x > 0 ) - ( x < 0 ))
+
 #define FPS_CALC_BEGIN                          \
     static double duration = 0;                 \
     double start_time = pcl::getTime ();        \
@@ -110,7 +120,9 @@
 using namespace pcl::tracking;
 
 //youbot_teleop_joystick_manipulation::d3poseJS obj_position;
-//youbot_teleop_joystick_manipulation::d3poseJS obj_position_old;
+
+geometry_msgs::PoseStamped obj_position_old, obj_position;
+
 template <typename PointType>
 class OpenNISegmentTracking
 {
@@ -147,15 +159,15 @@ public:
   , new_cloud_ (false)
   , ne_ (thread_nr)
   , counter_ (0)
-  , use_convex_hull_ (use_convex_hull)
+  , use_convex_hull_ (true)
   , visualize_non_downsample_ (visualize_non_downsample)
   , visualize_particles_ (visualize_particles)
   , downsampling_grid_size_ (downsampling_grid_size)
   {
  
     //Create Publishers
-    //obj_pub = nh.advertise<youbot_teleop_joystick_manipulation::d3poseJS>("/js_detected", 1);
-    cyl_pub = nh.advertise<pcl::PointCloud<pcl::PointXYZRGBA> >("/js_cloud", 1);
+    obj_pub = nh.advertise<geometry_msgs::PoseStamped>("/object_detected_pose", 100);
+    cyl_pub = nh.advertise<pcl::PointCloud<pcl::PointXYZRGBA> >("/object_detected_cloud", 100);
     
     flag_filt = false;
   
@@ -225,7 +237,21 @@ public:
     coherence->setMaximumDistance (0.01);
     tracker_->setCloudCoherence (coherence);
   }
-
+  
+  
+  void eulerZYX2quat (const geometry_msgs::Vector3 euler, geometry_msgs::Quaternion *q)
+	{
+		double cpsi, spsi, ctheta, stheta, cphi, sphi;
+		cpsi = cos (0.5 * euler.z); spsi = sin (0.5 * euler.z);
+		ctheta = cos (0.5 * euler.y); stheta = sin (0.5 * euler.y);
+		cphi = cos (0.5 * euler.x); sphi = sin (0.5 * euler.x);
+		q -> w = cphi*ctheta*cpsi + sphi*stheta*spsi;
+		q -> x = sphi*ctheta*cpsi - cphi*stheta*spsi;
+		q -> y = cphi*stheta*cpsi + sphi*ctheta*spsi;
+		q -> z = cphi*ctheta*spsi - sphi*stheta*cpsi;
+	}
+  
+  
   bool
   drawParticles (pcl::visualization::PCLVisualizer& viz)
   {
@@ -267,44 +293,61 @@ public:
   drawResult (pcl::visualization::PCLVisualizer& viz,const CloudPtr &cloud)
   {
     ParticleXYZRPY result = tracker_->getResult ();
+    ParticleXYZRPY result_old;
     Eigen::Affine3f transformation = tracker_->toEigenMatrix (result);
-        
+    
+    
+    
     std::cout << "result-camera (x,y,z,roll,pitch,yaw):" << result.x << " " << result.y << " " << result.z << " " << " " << result.roll << " " << result.pitch << " " << result.yaw << std::endl;
 
-    /*
+    
     ros::Time stamp = ros::Time::now();
     obj_position.header.stamp = stamp;
     
+    
     if (flag_filt==false)
     {
-        obj_position.tx = result.x;
-        obj_position.ty = result.y;
-        obj_position.tz = result.z;
-        obj_position.roll = result.roll;    
-        obj_position.pitch = result.pitch;
-        obj_position.yaw = result.yaw;
+        // old pose = new one
+        result_old = result;
+        // set flag true
         flag_filt=true;
     }
     else
     {
-        obj_position.tx = result.x*0.3 + 0.7*obj_position_old.tx;
-        obj_position.ty = result.y*0.3 + 0.7*obj_position_old.ty;
-        obj_position.tz = result.z*0.3 + 0.7*obj_position_old.tz;
-        obj_position.roll =  result.roll *0.3 +0.7*obj_position_old.roll;    
-        obj_position.pitch = result.pitch*0.3 +0.7*obj_position_old.pitch;
-        obj_position.yaw =   result.yaw  *0.3 +0.7*obj_position_old.yaw;                
-        obj_pub.publish(obj_position); 
+        // depends to old pose computation
+        result_old.x = 0.3*result.x + 0.7*result_old.x;
+        result_old.y = 0.3*result.y + 0.7*result_old.y;
+        result_old.z = 0.3*result.z + 0.7*result_old.z;
+        
+        result_old.roll = 0.3*result.roll + 0.7*result_old.roll;
+        result_old.pitch = 0.3*result.pitch + 0.7*result_old.pitch;
+        result_old.yaw = 0.3*result.yaw + 0.7*result_old.yaw;
+        
+        // publish new results
+        // Position
+        obj_position.pose.position.x = result_old.x;
+        obj_position.pose.position.y = result_old.y;
+        obj_position.pose.position.z = result_old.z;
+        
+        // Orientation
+        geometry_msgs::Vector3 euler;
+        geometry_msgs::Quaternion quat;
+        
+        euler.x = result_old.roll;
+        euler.y = result_old.pitch;
+        euler.z = result_old.yaw;
+        
+        // Roll Pitch Yaw to Quaternion
+        eulerZYX2quat(euler,&quat);
+        obj_position.pose.orientation = quat;
+        
+        //Publish
+        obj_pub.publish(obj_position);
+        
+        
     }
- 
-    //Hold previous values for filtering
-    obj_position_old.tx = obj_position.tx;
-    obj_position_old.ty = obj_position.ty;
-    obj_position_old.tz = obj_position.tz;
-    obj_position_old.roll = obj_position.roll;    
-    obj_position_old.pitch = obj_position.pitch;
-    obj_position_old.yaw = obj_position.yaw; 
+    result_old = result;
     
-    */
     // move a little bit for better visualization
     transformation.translation () += Eigen::Vector3f (0.0f, 0.0f, -0.005f);
     RefCloudPtr result_cloud (new RefCloud ());
@@ -592,6 +635,7 @@ public:
     cloud_pass_downsampled_.reset (new Cloud);
     pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients ());
     pcl::PointIndices::Ptr inliers (new pcl::PointIndices ());
+    
     filterPassThrough (cloud, *cloud_pass_);
     if (counter_ < 10)
     {
@@ -602,6 +646,7 @@ public:
       //gridSample (cloud_pass_, *cloud_pass_downsampled_, 0.01);
       cloud_pass_downsampled_ = cloud_pass_;
       CloudPtr target_cloud;
+
       if (use_convex_hull_)
       {
         planeSegmentation (cloud_pass_downsampled_, *coefficients, *inliers);
@@ -685,7 +730,7 @@ public:
           reference_ = transed_ref;
           tracker_->setMinIndices (int (ref_cloud->points.size ()) / 2);
         
-          cyl_pub.publish(transed_ref);
+          
         }
         else
         {
@@ -718,7 +763,7 @@ public:
   void
   run ()
   {
-    pcl::Grabber* interface = new pcl::io::OpenNI2Grabber(device_id_);
+    pcl::Grabber* interface = new pcl::io::OpenNI2Grabber(device_id_, pcl::io::OpenNI2Grabber::OpenNI_Default_Mode, pcl::io::OpenNI2Grabber::OpenNI_Default_Mode);
     boost::function<void (const CloudConstPtr&)> f =
       boost::bind (&OpenNISegmentTracking::cloud_cb, this, _1);
     interface->registerCallback (f);
@@ -798,14 +843,16 @@ main (int argc, char** argv)
   if (pcl::console::find_argument (argc, argv, "-fixed") > 0)
     use_fixed = true;
   pcl::console::parse_argument (argc, argv, "-d", downsampling_grid_size);
+  /*
   if (argc < 2)
-  {
+  /{
     usage (argv);
     exit (1);
   }
   
   std::string device_id = std::string (argv[1]);
-
+  */
+  std::string device_id;
   if (device_id == "--help" || device_id == "-h")
   {
     usage (argv);
@@ -813,7 +860,7 @@ main (int argc, char** argv)
   }
   
   // open kinect2
-  OpenNISegmentTracking<pcl::PointXYZRGBA> v (device_id, 8, downsampling_grid_size,
+  OpenNISegmentTracking<pcl::PointXYZRGBA> v ( " ", 8, downsampling_grid_size,
                                               use_convex_hull,
                                               visualize_non_downsample, visualize_particles,
                                               use_fixed);

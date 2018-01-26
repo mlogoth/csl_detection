@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(csl_detection)
 
-#set(PCL_DIR "/usr/share/pcl-1.7/PCLConfig.cmake")
+set(PCL_DIR "/usr/share/pcl-1.7/PCLConfig.cmake")
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -9,15 +9,13 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
-  geometry_msgs
-  tf
-  #OpenCV
+  OpenCV
 )
 
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system)
-find_package(PCL 1.8 EXACT REQUIRED)
-find_package(math_utils REQUIRED)
+find_package(PCL 1.7.2 EXACT REQUIRED)
+
 find_package(freenect2 REQUIRED HINTS "$ENV{HOME}/freenect2")
 
 #find_package(Eigen REQUIRED)
@@ -112,10 +110,8 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 
 catkin_package(
-  CATKIN_DEPENDS std_msgs geometry_msgs
 
 )
-
 
 
 ###########
@@ -127,11 +123,10 @@ catkin_package(
 # include_directories(include)
 include_directories(
   ${catkin_INCLUDE_DIRS}
-#  ${freenect2_INCLUDE_DIRS}
+  ${freenect2_INCLUDE_DIRS}
   include
-#  /usr/include/pcl-1.7/
+  /usr/include/pcl-1.7/
   ${PCL_INCLUDE_DIRS}
-  ${math_utils_INCLUDE_DIRS}
 )
 
 #include_directories(${PCL_INCLUDE_DIRS})
@@ -159,9 +154,7 @@ set(PCL_BUILD_TYPE Release)
 #add_executable(kinect2_tracking_node src/kinect2_tracking_node.cpp)
 #add_executable(kinect2_read_write_node src/kinect2_read_write_node.cpp)
 add_executable(kinect2_csl_tracker src/kinect2_freenect_tracker.cpp)
-add_executable(dian_csl_tracker src/dian_kinect2_tracker.cpp)
-add_executable(openni2_grabber_test src/openni2_test.cpp)
-add_executable(pcd_cloud_viewer src/pcd_cloud_viewer.cpp)
+#add_executable(openni2_grabber_test src/openni2_test.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(csl_detection_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -184,25 +177,25 @@ add_executable(pcd_cloud_viewer src/pcd_cloud_viewer.cpp)
 ##  -lfreenect2
 #)
 
-#string(REPLACE -lpcl_recognition    /usr/lib/libpcl_recognition.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
-#string(REPLACE -lpcl_filters    /usr/lib/libpcl_filters.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
-#string(REPLACE -lpcl_common    /usr/lib/libpcl_common.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
-#string(REPLACE -lpcl_apps    /usr/lib/libpcl_apps.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
-#string(REPLACE -lpcl_surface    /usr/lib/libpcl_surface.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
-#string(REPLACE -lpcl_kdtree    /usr/lib/libpcl_kdtree.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
-#string(REPLACE -lpcl_tracking    /usr/lib/libpcl_tracking.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
-#string(REPLACE -lpcl_visualization    /usr/lib/libpcl_visualization.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
-#string(REPLACE -lpcl_io    /usr/lib/libpcl_io.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
-#string(REPLACE -lpcl_outofcore    /usr/lib/libpcl_outofcore.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
-#string(REPLACE -lpcl_people    /usr/lib/libpcl_people.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
-#string(REPLACE -lpcl_keypoints    /usr/lib/libpcl_keypoints.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
-#string(REPLACE -lpcl_features    /usr/lib/libpcl_features.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
-#string(REPLACE -lpcl_search    /usr/lib/libpcl_search.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
-#string(REPLACE -lpcl_sample_consensus    /usr/lib/libpcl_sample_consensus.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
-#string(REPLACE -lpcl_octree    /usr/lib/libpcl_octree.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
-#string(REPLACE -lpcl_io_ply    /usr/lib/libpcl_io_ply.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
-#string(REPLACE -lpcl_segmentation    /usr/lib/libpcl_segmentation.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
-#string(REPLACE -lpcl_registration    /usr/lib/libpcl_registration.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
+string(REPLACE -lpcl_recognition    /usr/lib/libpcl_recognition.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
+string(REPLACE -lpcl_filters    /usr/lib/libpcl_filters.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
+string(REPLACE -lpcl_common    /usr/lib/libpcl_common.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
+string(REPLACE -lpcl_apps    /usr/lib/libpcl_apps.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
+string(REPLACE -lpcl_surface    /usr/lib/libpcl_surface.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
+string(REPLACE -lpcl_kdtree    /usr/lib/libpcl_kdtree.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
+string(REPLACE -lpcl_tracking    /usr/lib/libpcl_tracking.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
+string(REPLACE -lpcl_visualization    /usr/lib/libpcl_visualization.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
+string(REPLACE -lpcl_io    /usr/lib/libpcl_io.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
+string(REPLACE -lpcl_outofcore    /usr/lib/libpcl_outofcore.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
+string(REPLACE -lpcl_people    /usr/lib/libpcl_people.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
+string(REPLACE -lpcl_keypoints    /usr/lib/libpcl_keypoints.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
+string(REPLACE -lpcl_features    /usr/lib/libpcl_features.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
+string(REPLACE -lpcl_search    /usr/lib/libpcl_search.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
+string(REPLACE -lpcl_sample_consensus    /usr/lib/libpcl_sample_consensus.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
+string(REPLACE -lpcl_octree    /usr/lib/libpcl_octree.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
+string(REPLACE -lpcl_io_ply    /usr/lib/libpcl_io_ply.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
+string(REPLACE -lpcl_segmentation    /usr/lib/libpcl_segmentation.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
+string(REPLACE -lpcl_registration    /usr/lib/libpcl_registration.so.1.7.2     PCL_LIBRARIES    "${PCL_LIBRARIES}")
 
 
 target_link_libraries(openni2_grabber_test
@@ -237,24 +230,7 @@ target_link_libraries(openni2_grabber_test
 target_link_libraries(kinect2_csl_tracker
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
-#  ${freenect2_LIBRARY}
-#  -lfreenect2
-)
-
-target_link_libraries(pcd_cloud_viewer
-  ${catkin_LIBRARIES}
-  ${PCL_LIBRARIES}
-#  ${freenect2_LIBRARY}
-#  -lfreenect2
-)
-
-
-target_link_libraries(dian_csl_tracker
-  ${catkin_LIBRARIES}
-  ${PCL_LIBRARIES}
-  ${math_utils_LIBRARIES}
-
-#  ${freenect2_LIBRARY}
+  ${freenect2_LIBRARY}
 #  -lfreenect2
 )
 #############
