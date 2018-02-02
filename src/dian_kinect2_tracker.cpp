@@ -37,7 +37,8 @@
 
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/Quaternion.h"
-
+#include "sensor_msgs/PointCloud2.h"
+#include <pcl_conversions/pcl_conversions.h>  
 
 #include "pcl_ros/point_cloud.h"
 //#include <youbot_teleop_joystick_manipulation/d3poseJS.h>
@@ -147,7 +148,7 @@ public:
   typedef typename KdTree::Ptr KdTreePtr;
 
   ros::NodeHandle nh;
-  ros::Publisher obj_pub,cyl_pub;
+  ros::Publisher obj_pub,cld_pub;
 
     
   OpenNISegmentTracking (const std::string& device_id, int thread_nr, double downsampling_grid_size,
@@ -167,7 +168,7 @@ public:
  
     //Create Publishers
     obj_pub = nh.advertise<geometry_msgs::PoseStamped>("/object_detected_pose", 100);
-    cyl_pub = nh.advertise<pcl::PointCloud<pcl::PointXYZRGBA> >("/object_detected_cloud", 100);
+    cld_pub = nh.advertise<pcl::PointCloud<pcl::PointXYZRGBA> >("/object_detected_cloud", 100);
     
     flag_filt = false;
   
@@ -236,6 +237,7 @@ public:
     coherence->setSearchMethod (search);
     coherence->setMaximumDistance (0.01);
     tracker_->setCloudCoherence (coherence);
+    
   }
   
   
@@ -296,8 +298,8 @@ public:
     ParticleXYZRPY result_old;
     Eigen::Affine3f transformation = tracker_->toEigenMatrix (result);
     
-    
-    
+    // Set RGB Intrinsics Parameters for Kinect 2
+
     std::cout << "result-camera (x,y,z,roll,pitch,yaw):" << result.x << " " << result.y << " " << result.z << " " << " " << result.roll << " " << result.pitch << " " << result.yaw << std::endl;
 
     
@@ -354,10 +356,21 @@ public:
 
     if (!visualize_non_downsample_)
       pcl::transformPointCloud<RefPointType> (*(tracker_->getReferenceCloud ()), *result_cloud, transformation);
+      
     else
       pcl::transformPointCloud<RefPointType> (*reference_, *result_cloud, transformation);
 
     {
+      
+      /* Publish Cloud Message*/
+      sensor_msgs::PointCloud2 cloud_msg;
+      //Publish Point Cloud
+      pcl::toROSMsg(*result_cloud, cloud_msg);   
+      cloud_msg.header.frame_id = "/kinect_rgb_optical_frame";
+      cloud_msg.header.stamp = ros::Time::now();
+      cld_pub.publish(cloud_msg);
+      
+      
       pcl::visualization::PointCloudColorHandlerCustom<RefPointType> red_color (result_cloud, 0, 0, 255);
       if (!viz.updatePointCloud (result_cloud, red_color, "resultcloud"))
         viz.addPointCloud (result_cloud, red_color, "resultcloud");
@@ -370,6 +383,7 @@ public:
   {
     boost::mutex::scoped_lock lock (mtx_);
     
+    //viz.setCameraPosition(0.0,0.0,0.0,-1.0,0.0,0.0,0);
     if (!cloud_pass_)
     {
       boost::this_thread::sleep (boost::posix_time::seconds (1));
@@ -766,12 +780,76 @@ public:
     pcl::Grabber* interface = new pcl::io::OpenNI2Grabber(device_id_, pcl::io::OpenNI2Grabber::OpenNI_Default_Mode, pcl::io::OpenNI2Grabber::OpenNI_Default_Mode);
     boost::function<void (const CloudConstPtr&)> f =
       boost::bind (&OpenNISegmentTracking::cloud_cb, this, _1);
-    interface->registerCallback (f);
     
+    double fx_rgb, fy_rgb, cx_rgb, cy_rgb, fx_dep, fy_dep, cx_dep, cy_dep ;
+    
+
+    /*Read Camera Intrinsic Parameters From Parameter Server.*/
+    
+    // RGB CAMERA
+    /* fx,fy : Focal Lengths
+     * cx,cy : Principal point x,y axis
+     */
+    if (!nh.getParam("detection/camera/rgb/fx",  fx_rgb))
+	{
+		fx_rgb = 1.0599465578241038e+03;
+	}
+	
+	if (!nh.getParam("detection/camera/rgb/fy", fy_rgb))
+	{
+		fy_rgb = 1.0539326808799726e+03;
+	}
+	
+	if (!nh.getParam("detection/camera/rgb/cx", cx_rgb))
+	{
+		cx_rgb = 9.5488326677588441e+02;
+	}
+	
+    if (!nh.getParam("detection/camera/rgb/cy",  cy_rgb))
+	{
+		cy_rgb = 5.2373858291060583e+02;
+	}
+	
+	
+    // Depth CAMERA
+    /* fx,fy : Focal Lengths
+     * cx,cy : Principal point x,y axis
+     */
+    if (!nh.getParam("detection/camera/depth/fx",  fx_dep))
+	{
+		fx_dep = 3.6694757270064110e+02;
+	}
+	
+	if (!nh.getParam("detection/camera/depth/fy", fy_dep))
+	{
+		fy_dep = 3.6479117165721783e+02;
+	}
+	
+	if (!nh.getParam("detection/camera/depth/cx", cx_dep))
+	{
+		cx_dep =  2.4298551682775121e+02;
+	}
+	
+    if (!nh.getParam("detection/camera/depth/cy",  cy_dep))
+	{
+		cy_dep = 2.0769853575457685e+02;
+	}
+
+//    
+    // Set RGB and Depth Camera Intrinsic Parameters
+    static_cast<pcl::io::OpenNI2Grabber*>(interface)->setRGBCameraIntrinsics(fx_rgb, fy_rgb, cx_rgb, cy_rgb);
+    static_cast<pcl::io::OpenNI2Grabber*>(interface)->setDepthCameraIntrinsics(fx_dep, fy_dep, cx_dep, cy_dep);
+    
+    double fx,fy,ux,uy;
+    static_cast<pcl::io::OpenNI2Grabber*>(interface)->getRGBCameraIntrinsics(fx,fx,ux,uy);
+    std::cout << "Camera Intrinsic Parameters:\n" <<fx<<", "<< fy<<", "<<ux<<", "<<uy<<endl; 
+    
+    interface->registerCallback (f);
+
     viewer_.runOnVisualizationThread (boost::bind(&OpenNISegmentTracking::viz_cb, this, _1), "viz_cb");
     
     interface->start ();
-      
+    
     while (!viewer_.wasStopped ())
       boost::this_thread::sleep(boost::posix_time::seconds(1));
     interface->stop ();
@@ -827,6 +905,7 @@ main (int argc, char** argv)
 
   ros::init (argc, argv, "js_tracker_node");
   
+  
   bool use_convex_hull = true;
   bool visualize_non_downsample = false;
   bool visualize_particles = true;
@@ -858,6 +937,7 @@ main (int argc, char** argv)
     usage (argv);
     exit (1);
   }
+  
   
   // open kinect2
   OpenNISegmentTracking<pcl::PointXYZRGBA> v ( " ", 8, downsampling_grid_size,

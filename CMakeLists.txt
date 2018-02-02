@@ -160,6 +160,11 @@ set(PCL_BUILD_TYPE Release)
 #add_executable(kinect2_read_write_node src/kinect2_read_write_node.cpp)
 add_executable(kinect2_csl_tracker src/kinect2_freenect_tracker.cpp)
 add_executable(dian_csl_tracker src/dian_kinect2_tracker.cpp)
+
+add_executable(csl_tracker_new src/csl_new_kinect2_tracker.cpp)
+
+add_executable(pointcloud2pcd src/tools/pointcloud2_to_pcd.cpp)
+
 add_executable(openni2_grabber_test src/openni2_test.cpp)
 add_executable(pcd_cloud_viewer src/pcd_cloud_viewer.cpp)
 ## Add cmake target dependencies of the executable
@@ -249,7 +254,20 @@ target_link_libraries(pcd_cloud_viewer
 )
 
 
+target_link_libraries(pointcloud2pcd
+  ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}
+#  ${freenect2_LIBRARY}
+#  -lfreenect2
+)
+
 target_link_libraries(dian_csl_tracker
+  ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}
+  ${math_utils_LIBRARIES}
+)
+
+target_link_libraries(csl_tracker_new
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
   ${math_utils_LIBRARIES}

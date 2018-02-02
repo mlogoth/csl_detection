@@ -5,7 +5,7 @@
 	
     
     <node pkg="tf" type="static_transform_publisher" name="kinect2_base_link" args="0 0 0 1.57 0.0 3.14 /map /kinect_rgb_optical_frame 100"/> 
-	<node name="kinect2_tracking_node" pkg="csl_detection" type="dian_csl_tracker" output="screen" />
+	<node name="kinect2_tracking_node" pkg="csl_detection" type="csl_tracker_new" output="screen" />
 	
 </launch>
 
